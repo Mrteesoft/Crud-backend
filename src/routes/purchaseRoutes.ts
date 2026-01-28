@@ -11,7 +11,6 @@ import {
 import { protect } from '../middlewares/auth';
 import { validateRequest } from '../middlewares/validateRequest';
 import { purchaseSchema } from '../validators/purchaseValidators';
-import { cacheMiddleware } from '../middlewares/cache';
 
 const router = Router();
 router.use(protect);
@@ -59,7 +58,7 @@ router.post('/', validateRequest(purchaseSchema), createPurchase);
  *       200:
  *         description: List of purchases
  */
-router.get('/', cacheMiddleware((req) => `purchases:${req.user?.id}:list:${req.originalUrl}`), getPurchases);
+router.get('/', getPurchases);
 
 /**
  * @openapi
@@ -81,7 +80,7 @@ router.get('/', cacheMiddleware((req) => `purchases:${req.user?.id}:list:${req.o
  *       404:
  *         description: Not found
  */
-router.get('/:id', cacheMiddleware((req) => `purchases:${req.user?.id}:${req.params.id}`), getPurchaseById);
+router.get('/:id', getPurchaseById);
 
 /**
  * @openapi
@@ -151,7 +150,7 @@ router.delete('/:id', deletePurchase);
  *       200:
  *         description: List installments
  */
-router.get('/:id/installments', cacheMiddleware((req) => `purchases:${req.user?.id}:${req.params.id}:installments`), getInstallments);
+router.get('/:id/installments', getInstallments);
 
 /**
  * @openapi

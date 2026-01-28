@@ -8,7 +8,6 @@ import {
 } from '../controllers/merchantController';
 import { validateRequest } from '../middlewares/validateRequest';
 import { merchantSchema } from '../validators/merchantValidators';
-import { cacheMiddleware } from '../middlewares/cache';
 import { protectMerchants } from '../middlewares/auth';
 
 const router = Router();
@@ -50,7 +49,7 @@ router.post('/', validateRequest(merchantSchema), createMerchant);
  *       200:
  *         description: List of merchants
  */
-router.get('/', cacheMiddleware((req) => `merchants:${req.user?.id}:list`), getMerchants);
+router.get('/', getMerchants);
 
 /**
  * @openapi
@@ -72,7 +71,7 @@ router.get('/', cacheMiddleware((req) => `merchants:${req.user?.id}:list`), getM
  *       404:
  *         description: Not found
  */
-router.get('/:id', cacheMiddleware((req) => `merchants:${req.user?.id}:${req.params.id}`), getMerchantById);
+router.get('/:id', getMerchantById);
 
 /**
  * @openapi

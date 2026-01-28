@@ -6,6 +6,7 @@ import { AuthRequest } from '../middlewares/auth';
 import { buildInstallments } from '../utils/installments';
 import { getLogger } from '../utils/logger';
 import { isValidObjectId } from '../utils/ids';
+import { Merchant } from '../models/merchantModel';
 
 const log = getLogger('PurchaseController');
 
@@ -22,6 +23,14 @@ export const createPurchase = async (req: AuthRequest<{}, {}, PurchaseInput>, re
   try {
     const ownerId = ownerIdFromReq(req, res);
     if (!ownerId) return;
+
+    if (!isValidObjectId(req.body.merchantId)) {
+      return res.status(400).json({ message: 'Invalid merchant id' });
+    }
+    const merchantExists = await Merchant.exists({ _id: req.body.merchantId });
+    if (!merchantExists) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
 
     const purchase = await Purchase.create({ ...req.body, createdBy: ownerId });
     const installments = buildInstallments(purchase);
@@ -71,6 +80,15 @@ export const updatePurchase = async (
     const ownerId = ownerIdFromReq(req, res);
     if (!ownerId) return;
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid id' });
+
+    if (req.body.merchantId) {
+      if (!isValidObjectId(req.body.merchantId)) {
+        return res.status(400).json({ message: 'Invalid merchant id' });
+      }
+      const merchantExists = await Merchant.exists({ _id: req.body.merchantId });
+      if (!merchantExists) return res.status(404).json({ message: 'Merchant not found' });
+    }
+
     const purchase = await Purchase.findOneAndUpdate(
       { _id: req.params.id, createdBy: ownerId },
       req.body,
