@@ -7,7 +7,7 @@
 5) Health check: GET http://localhost:5000/health
 
  Auth (roles)
-- POST /api/v1/auth/register { name, email, password, role?: user|merchant } — defaults to user; admin signup is blocked.
+- POST /api/v1/auth/register { name, email, password, role?: user|merchant } — defaults to user,
 - POST  /api/v1/auth/login -> { user, token }
 - GET /api/v1/auth/me` (Bearer token)
 
