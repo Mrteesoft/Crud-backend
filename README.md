@@ -32,7 +32,7 @@ Fields: merchantId, itemName, amount, tenureMonths, interestRate?, status, start
 - Swagger UI: http://localhost:5000/api/docs
 - Base API: http://localhost:5000/api/v1
 
-## Postman
+ Postman
 Import postman_collection.json. Login to set {{token}}(user) or {{merchantToken}} (merchant), then run requests. Create Merchant captures merchantId; Create Purchase captures purchaseId.
 
  Notes
