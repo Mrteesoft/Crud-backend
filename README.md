@@ -11,14 +11,14 @@
 - POST  /api/v1/auth/login -> { user, token }
 - GET /api/v1/auth/me` (Bearer token)
 
-## Merchants (merchant/admin token)
+ Merchants (merchant/admin token)
 - POST /api/v1/merchants { name, category?, contactEmail? }
 - GET /api/v1/merchants
 - GET /api/v1/merchants/:id
 - PATCH /api/v1/merchants/:id
 - DELETE /api/v1/merchants/:id
 
-## Purchases (user token)
+ Purchases (user token)
 Fields: merchantId, itemName, amount, tenureMonths, interestRate?, status, startDate.
 - POST /api/v1/purchases
 - GET /api/v1/purchases (optional ?status=)
@@ -28,7 +28,7 @@ Fields: merchantId, itemName, amount, tenureMonths, interestRate?, status, start
 - GET /api/v1/purchases/:id/installments
 - POST /api/v1/purchases/:id/pay
 
-## Swagger / Docs
+ Swagger / Docs
 - Swagger UI: http://localhost:5000/api/docs
 - Base API: http://localhost:5000/api/v1
 
