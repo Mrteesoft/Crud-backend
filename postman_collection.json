@@ -1,19 +1,332 @@
 {
   "info": {
     "name": "BNPL API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "auth": {
-    "type": "bearer",
-    "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folder: 00 - Runner (run in order). Variables: baseUrl, token, merchantToken, merchantId, purchaseId."
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
-    { "key": "token", "value": "" },
-    { "key": "merchantId", "value": "" },
-    { "key": "purchaseId", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "merchantToken",
+      "value": ""
+    },
+    {
+      "key": "merchantId",
+      "value": ""
+    },
+    {
+      "key": "purchaseId",
+      "value": ""
+    },
+    {
+      "key": "userEmail",
+      "value": "jane@example.com"
+    },
+    {
+      "key": "userPassword",
+      "value": "secret123"
+    },
+    {
+      "key": "merchantEmail",
+      "value": "merchant@example.com"
+    },
+    {
+      "key": "merchantPassword",
+      "value": "secret123"
+    }
   ],
   "item": [
+    {
+      "name": "00 - Runner (run in order)",
+      "item": [
+        {
+          "name": "1) Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "2) Login User (sets token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Login returned token', () => pm.expect(res && res.token).to.be.ok);",
+                  "if (res && res.token) pm.collectionVariables.set('token', res.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3) Register Merchant User (optional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Merchant\",\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\",\n  \"role\": \"merchant\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "4) Login Merchant (sets merchantToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Merchant login returned token', () => pm.expect(res && res.token).to.be.ok);",
+                  "if (res && res.token) pm.collectionVariables.set('merchantToken', res.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5) Create Merchant (sets merchantId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gadget Store\",\n  \"category\": \"Electronics\",\n  \"contactEmail\": \"support@gadget.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/merchants"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const mt = pm.collectionVariables.get('merchantToken');",
+                  "pm.test('merchantToken is set (run Login Merchant first)', () => pm.expect(mt).to.be.ok);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "const id =",
+                  "  res?._id ||",
+                  "  res?.id ||",
+                  "  res?.data?._id ||",
+                  "  res?.data?.id ||",
+                  "  res?.data?.merchant?._id ||",
+                  "  res?.data?.merchant?.id ||",
+                  "  res?.merchant?._id ||",
+                  "  res?.merchant?.id;",
+                  "",
+                  "pm.test(\"Create merchant returned an id\", () => {",
+                  "  pm.expect(id, \"merchantId not found in response\").to.be.ok;",
+                  "});",
+                  "",
+                  "if (id) {",
+                  "  pm.collectionVariables.set(\"merchantId\", id);",
+                  "  pm.environment.set(\"merchantId\", id);",
+                  "  console.log(\"Saved merchantId:\", id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6) Create Purchase (sets purchaseId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchantId}}\",\n  \"itemName\": \"iPhone 16\",\n  \"amount\": 1200,\n  \"tenureMonths\": 6,\n  \"interestRate\": 5\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/purchases"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('merchantId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('merchantId missing: run Create Merchant first');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const id = res && (res.id || res._id || (res.data && (res.data.id || res.data._id)));",
+                  "pm.test('Create purchase returned id', () => pm.expect(id).to.be.ok);",
+                  "if (id) pm.collectionVariables.set('purchaseId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7) Get Installments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}/installments",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8) Pay Next Installment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}/pay",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9) List Purchases (optional ?status=)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/purchases?status=approved",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "noauth"
+      }
+    },
     {
       "name": "Auth",
       "item": [
@@ -21,79 +334,38 @@
           "name": "Register User",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"secret123\",\n  \"role\": \"user\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth","register"] }
-          }
-        },
-        {
-          "name": "Register Merchant User",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Acme Merchant\",\n  \"email\": \"merchant@example.com\",\n  \"password\": \"secret123\",\n  \"role\": \"merchant\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth","register"] }
-          }
-        },
-        {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const res = pm.response.json();",
-                  "if (res && res.token) { pm.collectionVariables.set('token', res.token); pm.environment.set('token', res.token); }",
-                  "if (res && res.user && res.user.role === 'merchant') { pm.collectionVariables.set('merchantToken', res.token); pm.environment.set('merchantToken', res.token); }"
-                ]
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"secret123\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
           }
         },
         {
-          "name": "Login Merchant",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const res = pm.response.json();",
-                  "if (res && res.token) { pm.collectionVariables.set('token', res.token); pm.environment.set('token', res.token); }",
-                  "if (res && res.user && res.user.role === 'merchant') { pm.collectionVariables.set('merchantToken', res.token); pm.environment.set('merchantToken', res.token); }"
-                ]
+          "name": "Register Merchant User (optional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"merchant@example.com\",\n  \"password\": \"secret123\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Merchant\",\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\",\n  \"role\": \"merchant\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
           }
         },
         {
-          "name": "Me",
-          "request": {
-            "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth","me"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Merchants (merchant/admin token)",
-      "item": [
-        {
-          "name": "Create Merchant",
+          "name": "Login User (sets token)",
           "event": [
             {
               "listen": "test",
@@ -101,8 +373,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
-                  "const id = res && (res.id || res._id);",
-                  "if (id) { pm.collectionVariables.set('merchantId', id); pm.environment.set('merchantId', id); }"
+                  "pm.test('Login returned token', () => pm.expect(res && res.token).to.be.ok);",
+                  "if (res && res.token) pm.collectionVariables.set('token', res.token);"
                 ]
               }
             }
@@ -110,65 +382,245 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{merchantToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Gadget Store\",\n  \"category\": \"Electronics\",\n  \"contactEmail\": \"support@gadget.com\"\n}" },
-            "url": { "raw": "{{baseUrl}}/merchants", "host": ["{{baseUrl}}"], "path": ["merchants"] }
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login Merchant (sets merchantToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Merchant login returned token', () => pm.expect(res && res.token).to.be.ok);",
+                  "if (res && res.token) pm.collectionVariables.set('merchantToken', res.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{merchantEmail}}\",\n  \"password\": \"{{merchantPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Me (user)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Merchants (merchant token)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{merchantToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Create Merchant (sets merchantId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "const id =",
+                  "  res?._id ||",
+                  "  res?.id ||",
+                  "  res?.data?._id ||",
+                  "  res?.data?.id ||",
+                  "  res?.data?.merchant?._id ||",
+                  "  res?.data?.merchant?.id ||",
+                  "  res?.merchant?._id ||",
+                  "  res?.merchant?.id;",
+                  "",
+                  "pm.test(\"Create merchant returned an id\", () => {",
+                  "  pm.expect(id, \"merchantId not found in response\").to.be.ok;",
+                  "});",
+                  "",
+                  "if (id) {",
+                  "  pm.collectionVariables.set(\"merchantId\", id);",
+                  "  pm.environment.set(\"merchantId\", id);",
+                  "  console.log(\"Saved merchantId:\", id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gadget Store\",\n  \"category\": \"Electronics\",\n  \"contactEmail\": \"support@gadget.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/merchants"
           }
         },
         {
           "name": "List Merchants",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{merchantToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/merchants", "host": ["{{baseUrl}}"], "path": ["merchants"] }
+            "url": "{{baseUrl}}/api/v1/merchants"
           }
         },
         {
           "name": "Get Merchant",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{merchantToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/merchants/{{merchantId}}", "host": ["{{baseUrl}}"], "path": ["merchants","{{merchantId}}"] }
-          }
+            "url": "{{baseUrl}}/api/v1/merchants/{{merchantId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get(\"merchantId\") || pm.environment.get(\"merchantId\");",
+                  "pm.test(\"merchantId is set (run Create Merchant first)\", () => {",
+                  "  pm.expect(val && val.trim().length > 0, \"merchantId is empty\").to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Merchant",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{merchantToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Gadget Hub\"\n}" },
-            "url": { "raw": "{{baseUrl}}/merchants/{{merchantId}}", "host": ["{{baseUrl}}"], "path": ["merchants","{{merchantId}}"] }
-          }
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gadget Hub\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/merchants/{{merchantId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get(\"merchantId\") || pm.environment.get(\"merchantId\");",
+                  "pm.test(\"merchantId is set (run Create Merchant first)\", () => {",
+                  "  pm.expect(val && val.trim().length > 0, \"merchantId is empty\").to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete Merchant",
           "request": {
             "method": "DELETE",
-            "header": [ { "key": "Authorization", "value": "Bearer {{merchantToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/merchants/{{merchantId}}", "host": ["{{baseUrl}}"], "path": ["merchants","{{merchantId}}"] }
-          }
+            "url": "{{baseUrl}}/api/v1/merchants/{{merchantId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get(\"merchantId\") || pm.environment.get(\"merchantId\");",
+                  "pm.test(\"merchantId is set (run Create Merchant first)\", () => {",
+                  "  pm.expect(val && val.trim().length > 0, \"merchantId is empty\").to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
       "name": "Purchases (user token)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      },
       "item": [
         {
-          "name": "Create Purchase",
+          "name": "Create Purchase (sets purchaseId)",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const mid = pm.collectionVariables.get('merchantId');",
+                  "pm.test('merchantId is set (create a merchant first)', () => pm.expect(mid).to.be.ok);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
-                  "const id = res && (res.id || res._id);",
-                  "if (id) { pm.collectionVariables.set('purchaseId', id); pm.environment.set('purchaseId', id); }"
+                  "const id = res && (res.id || res._id || (res.data && (res.data.id || res.data._id)));",
+                  "pm.test('Create purchase returned id', () => pm.expect(id).to.be.ok);",
+                  "if (id) pm.collectionVariables.set('purchaseId', id);"
                 ]
               }
             }
@@ -176,64 +628,141 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"merchantId\": \"{{merchantId}}\",\n  \"itemName\": \"iPhone 16\",\n  \"amount\": 1200,\n  \"tenureMonths\": 6,\n  \"interestRate\": 5\n}" },
-            "url": { "raw": "{{baseUrl}}/purchases", "host": ["{{baseUrl}}"], "path": ["purchases"] }
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchantId}}\",\n  \"itemName\": \"iPhone 16\",\n  \"amount\": 1200,\n  \"tenureMonths\": 6,\n  \"interestRate\": 5\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/purchases"
           }
         },
         {
-          "name": "List Purchases",
+          "name": "List Purchases (?status=)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/purchases", "host": ["{{baseUrl}}"], "path": ["purchases"] }
-          }
+            "url": "{{baseUrl}}/api/v1/purchases?status=approved"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Purchase",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["purchases","{{purchaseId}}"] }
-          }
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Purchase",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"status\": \"approved\"\n}" },
-            "url": { "raw": "{{baseUrl}}/purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["purchases","{{purchaseId}}"] }
-          }
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete Purchase",
           "request": {
             "method": "DELETE",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["purchases","{{purchaseId}}"] }
-          }
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Installments",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/purchases/{{purchaseId}}/installments", "host": ["{{baseUrl}}"], "path": ["purchases","{{purchaseId}}","installments"] }
-          }
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}/installments"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Pay Next Installment",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
-            "url": { "raw": "{{baseUrl}}/purchases/{{purchaseId}}/pay", "host": ["{{baseUrl}}"], "path": ["purchases","{{purchaseId}}","pay"] }
-          }
+            "url": "{{baseUrl}}/api/v1/purchases/{{purchaseId}}/pay"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const val = pm.collectionVariables.get('purchaseId');",
+                  "if (!val || (typeof val === 'string' && !val.trim())) throw new Error('purchaseId missing: run Create Purchase first');"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
